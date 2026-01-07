@@ -30,3 +30,8 @@ jobs:
         with:
              name: report-always
              path: test-reports/
+             
+      - name: Deploy application
+        if: success()
+        run: |
+          echo "Deploying application..."
