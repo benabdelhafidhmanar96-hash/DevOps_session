@@ -28,5 +28,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-             name: report-failure
+             name: report-always
              path: test-reports/
