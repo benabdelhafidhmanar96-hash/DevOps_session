@@ -31,7 +31,13 @@ jobs:
              name: report-always
              path: test-reports/
              
-      - name: Deploy application
-        if: success()
-        run: |
-          echo "Deploying application..."
+  deploy:
+          needs: build-and-test
+          runs-on: ubuntu-latest
+          if: success()
+          steps: 
+            - uses: actions/checkout@v3
+            - name: Deploy application
+              run: bash ./deploy.sh production
+          
+          
