@@ -64,4 +64,4 @@ jobs:
           from: "GitHub Actions <${{ secrets.GMAIL_USERNAME }}>"
           body: the job done with ${{ job.status }} for the commit ${{ github.sha }}.
                 for more details please check the atached report
-          attachments: ./report/report.xml      
+          attachments: ./report/results.xml      
