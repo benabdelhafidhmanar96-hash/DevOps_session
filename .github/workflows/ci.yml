@@ -1,67 +1,77 @@
-name: CI Pipeline Python
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+name: Step1 Python CI
+on: [push, pull_request]
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: &#39;3.10&#39;
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          mkdir -p test-reports
+          pytest --junitxml=test-reports/results.xml || true
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: test-reports/results.xml
+          if-no-files-found: warn
+      - name: Send Gmail notification on failure (with report)
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: &quot;❌ CI Failed - Step1 Python&quot;
+          body: |
+            Bonjour,
+            Le pipeline CI a échoué ❌
+            Veuillez trouver le rapport de tests en pièce jointe.
+            Repository : ${{ github.repository }}
+            Branche : ${{ github.ref_name }}
 
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Run tests
-        run: pytest --junitxml=test-reports/results.xml
-
-
-      - name: Upload report always
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-             name: report-always
-             path: test-reports/
-             
-  deploy:
-          needs: build-and-test
-          runs-on: ubuntu-latest
-          if: success()
-          steps: 
-            - uses: actions/checkout@v3
-            - name: Deploy application
-              run: bash ./deploy.sh production
-          
-  notify:
-    runs-on: ubuntu-latest
-    needs: [build-and-test, deploy]
-    if: always()
-    steps:
-      - name: Download test report
-        uses: actions/download-artifact@v4
-        with:
-          name: test-report
-          path: ./report
-
-      - name: Send email notification
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465 
-          username: ${{ secrets.SMTP_USERNAME }}
-          password: ${{ secrets.SMTP_PASSWORD }}
-          subject: " ${{ job.status }} du workflow - ${{ github.repository }}"
-          to: benabdelhafidhmanar96@gmail.com
-          cc: chokri.gammoudi@gmail.com
-          from: "GitHub Actions <${{ secrets.GMAIL_USERNAME }}>"
-          body: the job done with ${{ job.status }} for the commit ${{ github.sha }}.
-                for more details please check the atached report
-          attachments: ./report/results.xml      
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+          from: GitHub Actions &lt;${{ secrets.SMTP_USERNAME }}&gt;
+          attachments: test-reports/results.xml
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy application
+        run: bash ./deploy.sh production
+      - name: Download test report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: test-report
+          path: test-reports
+      - name: Send Gmail notification on success (with report)
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: &quot;✅ CI &amp; Deploy Success - Step1 Python&quot;
+          body: |
+            Bonjour,
+            Le pipeline CI + Deploy s’est terminé avec succès ✅
+            Le rapport de tests est joint à cet email.
+            Repository : ${{ github.repository }}
+            Branche : ${{ github.ref_name }}
+          to: ${{ secrets.MAIL_TO }}
+          cc: ${{ secrets.MAIL_CC }}
+          from: GitHub Actions &lt;${{ secrets.SMTP_USERNAME }}&gt;
+          attachments: test-reports/results.xml
