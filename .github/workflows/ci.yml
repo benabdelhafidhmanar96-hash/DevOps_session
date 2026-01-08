@@ -40,4 +40,28 @@ jobs:
             - name: Deploy application
               run: bash ./deploy.sh production
           
-          
+  notify:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, deploy]
+    if: always()
+    steps:
+      - name: Download test report
+        uses: actions/download-artifact@v4
+        with:
+          name: test-report
+          path: ./report
+
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465 
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: " ${{ job.status }} du workflow - ${{ github.repository }}"
+          to: benabdelhafidhmanar96@gmail.com
+          cc: chokri.gammoudi@gmail.com
+          from: "GitHub Actions <${{ secrets.GMAIL_USERNAME }}>"
+          body: the job done with ${{ job.status }} for the commit ${{ github.sha }}.
+                for more details please check the atached report
+          attachments: ./report/report.xml      
